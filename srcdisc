@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# source disclosure vulnerability check
+
+function usage
+{
+  echo "Usage: $0 <url>"
+  exit
+}
+
+if [ $# -ne 1 ]; then
+  usage
+fi
+
+# sadly '*' is expanded, sigh~
+PATTERNS='. %2E + %2B %2A \ %5C ? %3F %20 %00 ::$DATA'
+
+URL=$1
+TEMP=`expr "$URL" : 'http:\/\/\(.*\):.*\/'`
+if [ -z $TEMP ]; then
+  # http://host/
+  HOST=`expr "$URL" : 'http:\/\/\(.*\)\/'`
+  PORT=80
+  URL=`expr "$URL" : 'http:\/\/.*/\(.*\)'`
+else
+  # http://host:port/
+  HOST=$TEMP
+  PORT=`expr "$URL" : 'http:\/\/.*:\(.*\)/'`
+  URL=`expr "$URL" : 'http:\/\/.*:.*/\(.*\)'`
+fi
+
+EXT=`expr "$URL" : '.*\.\(.*\)'`
+if [ $EXT = 'jsp' -o $EXT = 'JSP' -o $EXT = 'asp' -o $EXT = 'ASP' ]; then
+  SRC='<%'
+else if [ $EXT = 'php' -o $EXT = 'PHP' ]; then
+  SRC='<?'
+  fi
+fi
+
+for PATTERN in $PATTERNS; do
+  RESULT=`echo -e "GET /$URL$PATTERN HTTP/1.0\n\n" | nc $HOST $PORT | grep $SRC`
+  STRLEN=`expr "$RESULT" : '.*'`
+  if [ $STRLEN -gt 0 ]; then
+    echo "http://$HOST$PORT/$URL$PATTERN is vulnerable"
+  fi
+done
