@@ -41,6 +41,6 @@ for PATTERN in $PATTERNS; do
   RESULT=`echo -e "GET /$URL$PATTERN HTTP/1.0\n\n" | nc $HOST $PORT | grep $SRC`
   STRLEN=`expr "$RESULT" : '.*'`
   if [ $STRLEN -gt 0 ]; then
-    echo "http://$HOST$PORT/$URL$PATTERN is vulnerable"
+    echo "http://$HOST:$PORT/$URL$PATTERN is vulnerable"
   fi
 done
