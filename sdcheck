@@ -1,0 +1,7 @@
+#!/bin/sh
+
+for TARGET in `cat target.list`
+do
+  srcdisc $TARGET
+done
+

